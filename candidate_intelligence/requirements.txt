@@ -1,0 +1,6 @@
+pandas
+numpy
+pyarrow
+orjson
+tqdm
+jsonschema

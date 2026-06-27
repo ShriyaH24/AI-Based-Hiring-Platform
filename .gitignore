@@ -1,0 +1,37 @@
+
+# Python compiled bytecode cache files (generated across all modules)
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local virtual environment directories (if you or your teammates spin them up)
+venv/
+.venv/
+env/
+.env
+ENV/
+*.venv
+
+
+# Ignore the 100,000 raw input data files sitting inside candidate_intelligence
+candidate_intelligence/data/candidates.jsonl
+candidate_intelligence/data/candidates.jsonl.gz
+
+# Catch-all: block any raw JSONL dataset variants across future folders
+**/*.jsonl
+**/*.jsonl.gz
+
+# Block any compiled parquet feature store file caches or generation directories
+**/output/
+*.parquet
+
+
+# Windows/macOS desktop visual configurations and temporary indexing blocks
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
