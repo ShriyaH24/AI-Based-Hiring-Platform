@@ -6,6 +6,9 @@ from parser import load_candidates
 from validator import CandidateValidator
 from feature_extractor import FeatureExtractor
 from behavioral_engine import BehavioralEngine
+from candidate_readiness import CandidateReadinessIndex
+from skill_evidence import SkillEvidence
+from growth_potential import GrowthPotential
 
 # File System Configurations
 SCHEMA_PATH = "data/candidate_schema.json"
@@ -24,6 +27,9 @@ def run_production_pipeline():
     validator = CandidateValidator(schema)
     extractor = FeatureExtractor()
     behavior_engine = BehavioralEngine()
+    readiness_engine = CandidateReadinessIndex()
+    skill_evidence_engine = SkillEvidence()
+    growth_engine = GrowthPotential()
     
     records = []
     
@@ -41,6 +47,12 @@ def run_production_pipeline():
         
         # STEP 6: Combine all matrices into one flattened dictionary
         unified_record = {**profile_and_skills, **behavioral_metrics}
+        readiness_metrics = readiness_engine.extract(unified_record)
+        skill_evidence_metrics = skill_evidence_engine.extract(unified_record)
+        growth_metrics = growth_engine.extract(unified_record)
+        unified_record.update(readiness_metrics)
+        unified_record.update(skill_evidence_metrics)
+        unified_record.update(growth_metrics)
         records.append(unified_record)
         
     # 3. Save Matrix Dataset to Parquet
@@ -59,13 +71,16 @@ def run_production_pipeline():
     
     # Check A: Row Count Check
     print(f" -> Total processed rows compiled: {len(df)}")
+    if len(df) != 100000:
+        audit_passed = False
+        print(" -> WARNING: Expected 100000 rows but found {}".format(len(df)))
     
     # Check B: Key Duplication Test
     duplicates = df.duplicated(subset=["candidate_id"]).sum()
     print(f" -> Duplicate candidate identifiers: {duplicates}")
     if duplicates > 0:
         audit_passed = False
-        
+    
     # Check C: Empty Document Search Check
     empty_docs = (df["search_document"].str.strip().str.len() == 0).sum()
     print(f" -> Blank search document fields: {empty_docs}")
@@ -77,6 +92,22 @@ def run_production_pipeline():
     print(f" -> Anomalous negative experience entries: {negative_experience}")
     if negative_experience > 0:
         audit_passed = False
+
+    # Check E: New scoring columns presence and bounds
+    required_score_columns = ["cri_score", "skill_evidence_score", "growth_potential_score"]
+    missing_score_columns = [col for col in required_score_columns if col not in df.columns]
+    if missing_score_columns:
+        audit_passed = False
+        print(f" -> Missing new scoring columns: {missing_score_columns}")
+    else:
+        null_score_values = df[required_score_columns].isnull().any().any()
+        score_range_errors = (
+            ((df[required_score_columns] < 0) | (df[required_score_columns] > 100)).any().any()
+        )
+        print(f" -> New scoring columns contain nulls: {null_score_values}")
+        print(f" -> New scoring columns outside 0-100 range: {score_range_errors}")
+        if null_score_values or score_range_errors:
+            audit_passed = False
 
     print("-" * 70)
     if audit_passed:
